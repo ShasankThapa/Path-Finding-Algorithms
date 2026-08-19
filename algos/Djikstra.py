@@ -43,30 +43,6 @@ class Djikstra(PathAlgo):
 
 
 
-g = Grid(50, 50, 1.0)
-
-# Wall 1: column 10, rows 0-35 (gap at rows 36-49)
-g.grid[0:36, 10] = np.inf
-
-# Wall 2: column 25, rows 14-49 (gap at rows 0-13)
-g.grid[14:50, 25] = np.inf
-
-# Wall 3: column 40, rows 0-40 (gap at rows 41-49)
-g.grid[0:41, 40] = np.inf
-
-# Mud patch 1: rows 36-45, columns 11-24
-g.grid[36:46, 11:25] = 3.0
-
-# Mud patch 2: rows 0-13, columns 26-39
-g.grid[0:14, 26:40] = 3.0
-
-d = Djikstra()
-path, nodes_expanded, runtime = d.search((0,0), (49,49), g)
-
-print(path)
-print(len(path))
-print(nodes_expanded)
-print(runtime)
 
 def hueristic(cell,end):
     if cell == end:

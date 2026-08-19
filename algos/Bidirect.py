@@ -5,7 +5,7 @@ import heapq as hq
 import time
 
 
-class Bidirectional(PathAlgo):
+class Bidirect(PathAlgo):
     def search(self, start, end, grid):
         start_time = time.time()
         distance_f = {start: 0}
@@ -64,17 +64,4 @@ class Bidirectional(PathAlgo):
         return best, meeting_node, path_runtime
 
 
-g = Grid(50, 50, 1.0)
 
-g.grid[0:36, 10] = np.inf
-g.grid[14:50, 25] = np.inf
-g.grid[0:41, 40] = np.inf
-g.grid[36:46, 11:25] = 3.0
-g.grid[0:14, 26:40] = 3.0
-
-b = Bidirectional()
-best, meeting_node, runtime = b.search((0, 0), (49, 49), g)
-
-print("best cost:", best)
-print("meeting node:", meeting_node)
-print("runtime:", runtime)

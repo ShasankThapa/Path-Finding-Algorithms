@@ -163,21 +163,3 @@ def jump(current_cell, direction, start, goal, grid):
         return jump(n, direction, start, goal, grid)
 
 
-g = Grid(50, 50, 1.0)
-
-g.grid[0:36, 10] = np.inf
-g.grid[14:50, 25] = np.inf
-g.grid[0:41, 40] = np.inf
-g.grid[36:46, 11:25] = 3.0
-g.grid[0:14, 26:40] = 3.0
-
-j = JPS()
-path, nodes_expanded, runtime = j.search((0,0), (49,49), g)
-
-print("path length:", len(path))
-print("nodes expanded:", nodes_expanded)
-print("runtime:", runtime)
-
-# calculate total path cost from the path itself, using terrain cost per cell stepped onto
-total_cost = sum(g.get_cost(r, c) for r, c in path[1:])
-print("total path cost:", total_cost)

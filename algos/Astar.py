@@ -53,19 +53,4 @@ class Astar(PathAlgo):
 
 
 
-g = Grid(50, 50, 1.0)
-
-
-
-a = Astar()
-path, nodes_expanded, runtime = a.search((0,0), (49,49), g)
-
-print("path length:", len(path))
-print("nodes expanded:", nodes_expanded)
-print("runtime:", runtime)
-
-#
-total_cost = sum(g.get_cost(r, c) for r, c in path[1:])
-print("total path cost:", total_cost)
-
 
