@@ -2,14 +2,17 @@
 
 *Interactive grid-based pathfinding visualizer implementing Dijkstra's algorithm, A*, Bidirectional Search, and Jump Point Search (JPS) — with a real-time animated demo of each algorithm searching for the shortest path.*
 
-## Djikstra algorithm solving a 2D grid in real time. 
-![Demo](djikstra.gif)
-## A-Star algorithm solving a 2D grid in real time. 
-![Demo](astar.gif)
-## Bidirectional Djikstra algorithm solving a 2D grid in real time. 
-![Demo](b-djikstra.gif)
-## JPS algorithm solving a 2D grid in real time. 
-![Demo](JPS.gif)
+## Dijkstra Algorithm solving a 2D grid in real time.
+![Dijkstra demo](algo%20GIFs/djikstra.gif)
+
+## A* Algorithm solving a 2D grid in real time.
+![A* demo](algo%20GIFs/astar.gif)
+
+## Bidirectional Dijkstra Algorithm solving a 2D grid in real time.
+![Bidirectional demo](algo%20GIFs/b-djikstra.gif)
+
+## JPS Algorithm solving a 2D grid in real time.
+![JPS demo](algo%20GIFs/JPS.gif)
 
 ## Overview
 
