@@ -22,6 +22,7 @@ class Bidirect(PathAlgo):
         meeting_node = None
 
         while queue_f and queue_b:
+            yield visited_f | visited_b, None
             if queue_f[0][0] <= queue_b[0][0]:
                 current_cost, current_cell = hq.heappop(queue_f)
                 if current_cell in visited_f:
@@ -61,7 +62,17 @@ class Bidirect(PathAlgo):
         end_time = time.time()
         path_runtime = end_time - start_time
 
-        return best, meeting_node, path_runtime
+        if meeting_node is None:
+            yield visited_f | visited_b, None
+        else:
+            path_f = [meeting_node]
+            while path_f[-1] != start:
+                path_f.append(came_from_f[path_f[-1]])
+            path_f.reverse()
 
+            path_b = [meeting_node]
+            while path_b[-1] != end:
+                path_b.append(came_from_b[path_b[-1]])
 
-
+            full_path = path_f + path_b[1:]
+            yield visited_f | visited_b, full_path

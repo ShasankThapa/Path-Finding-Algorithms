@@ -3,16 +3,11 @@ from grid import Grid, get_prox, in_bounds
 import numpy as np
 import heapq as hq
 import time
-
 class JPS(PathAlgo):
     def search(self, start, end, grid):
-
         def heuristic(cell, end):
-            row, col = cell
-            end_row, end_col = end
-            return abs(row - end_row) + abs(col - end_col)
+            return abs(cell[0] - end[0]) + abs(cell[1] - end[1])
 
-        start_time = time.time()
         distance = {start: 0}
         came_from = {}
         visited = set()
@@ -23,13 +18,14 @@ class JPS(PathAlgo):
             if current_cell in visited:
                 continue
             visited.add(current_cell)
+
+            yield visited, None
+
             if current_cell == end:
                 break
 
             parent = came_from.get(current_cell, None)
-
             if parent is None:
-                # start node — no direction yet, check all 8 directions manually
                 jump_points = []
                 for dr in (-1, 0, 1):
                     for dc in (-1, 0, 1):
@@ -46,24 +42,19 @@ class JPS(PathAlgo):
                 is_diagonal = jp[0] != current_cell[0] and jp[1] != current_cell[1]
                 step_cost = (2 ** 0.5) if is_diagonal else 1
                 new_cost = current_cost + steps * step_cost
-
                 if new_cost < distance.get(jp, float('inf')):
                     distance[jp] = new_cost
                     came_from[jp] = current_cell
                     hq.heappush(queue, (new_cost + heuristic(jp, end), new_cost, jp))
 
-        end_time = time.time()
-        path_runtime = end_time - start_time
-
-        if end not in came_from and end != start:
-            return None, len(visited), path_runtime
-
-        path_taken = [end]
-        while path_taken[-1] != start:
-            path_taken.append(came_from[path_taken[-1]])
-        path_taken.reverse()
-
-        return path_taken, len(visited), path_runtime
+        if end in came_from or end == start:
+            path = [end]
+            while path[-1] != start:
+                path.append(came_from[path[-1]])
+            path.reverse()
+            yield visited, path
+        else:
+            yield visited, None
 
 
 
