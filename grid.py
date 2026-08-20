@@ -36,3 +36,4 @@ def get_prox( row, col, grid):
     return neighbours
 
 
+
