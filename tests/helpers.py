@@ -34,6 +34,21 @@ def path_cost_8dir(path):
     return total
 
 
+def path_cost(path, grid):
+    # For a path of single steps in 4 or 8 directions:
+    # each step costs its length (1 or sqrt(2)) times the cost of the cell being entered.
+    total = 0
+    for i in range(len(path) - 1):
+        r1, c1 = path[i]
+        r2, c2 = path[i + 1]
+        if r1 != r2 and c1 != c2:
+            step_length = math.sqrt(2)
+        else:
+            step_length = 1
+        total += step_length * grid.get_cost(r2, c2)
+    return total
+
+
 def assert_valid_path(path, grid, start, end, diagonal):
     assert path is not None, "expected a path but got None"
     assert path[0] == start, f"path starts at {path[0]}, expected {start}"

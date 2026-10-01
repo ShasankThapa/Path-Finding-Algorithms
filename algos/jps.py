@@ -1,4 +1,5 @@
 from algos.base import PathAlgo
+from algos.heuristics import octile
 from grid import in_bounds
 import heapq as hq
 
@@ -6,25 +7,38 @@ SQRT2 = 2 ** 0.5
 
 
 class JPS(PathAlgo):
+    """Jump Point Search on an 8-directional grid.
+
+    Assumes uniform cost: straight steps cost 1 and diagonal steps cost sqrt(2).
+    It ignores mud (any cell cost other than a wall is treated as 1), because skipping
+    over runs of cells is only safe when every cell in the run costs the same.
+    No corner cutting: a diagonal step needs both cells beside it to be free.
+
+    After a search, two counters are available:
+    - nodes_expanded: cells popped from the priority queue and expanded.
+    - cells_scanned: every cell the jump loop stepped through, including the straight
+      scans made from each diagonal step. JPS expands few nodes but still scans many cells.
+    """
+
+    def __init__(self):
+        self.nodes_expanded = 0
+        self.cells_scanned = 0
+
     def search(self, start, end, grid):
-        def heuristic(cell, end):
-            # Octile distance: the exact cost on an open 8-directional grid where straight
-            # moves cost 1 and diagonal moves cost sqrt(2). It never overestimates, so the
-            # search still finds the cheapest path. (Manhattan would overestimate here.)
-            dr = abs(cell[0] - end[0])
-            dc = abs(cell[1] - end[1])
-            return SQRT2 * min(dr, dc) + (max(dr, dc) - min(dr, dc))
+        self.nodes_expanded = 0
+        self.cells_scanned = 0
 
         distance = {start: 0}
         came_from = {}
         visited = set()
-        queue = [(heuristic(start, end), 0, start)]
+        queue = [(octile(start, end), 0, start)]
 
         while queue:
             priority, current_cost, current_cell = hq.heappop(queue)
             if current_cell in visited:
                 continue
             visited.add(current_cell)
+            self.nodes_expanded += 1
 
             yield visited, None
 
@@ -38,11 +52,11 @@ class JPS(PathAlgo):
                     for dc in (-1, 0, 1):
                         if dr == 0 and dc == 0:
                             continue
-                        jp = jump(current_cell, (dr, dc), end, grid)
+                        jp = self.jump(current_cell, (dr, dc), end, grid)
                         if jp is not None:
                             jump_points.append(jp)
             else:
-                jump_points = identify_successors(current_cell, parent, end, grid)
+                jump_points = self.identify_successors(current_cell, parent, end, grid)
 
             for jp in jump_points:
                 steps = max(abs(jp[0] - current_cell[0]), abs(jp[1] - current_cell[1]))
@@ -52,7 +66,7 @@ class JPS(PathAlgo):
                 if new_cost < distance.get(jp, float('inf')):
                     distance[jp] = new_cost
                     came_from[jp] = current_cell
-                    hq.heappush(queue, (new_cost + heuristic(jp, end), new_cost, jp))
+                    hq.heappush(queue, (new_cost + octile(jp, end), new_cost, jp))
 
         if end in came_from or end == start:
             jump_path = [end]
@@ -62,6 +76,48 @@ class JPS(PathAlgo):
             yield visited, fill_in_path(jump_path)
         else:
             yield visited, None
+
+    def identify_successors(self, current, parent, goal, grid):
+        valid = prune(parent, current, grid)
+        successors = []
+        for candidate in valid:
+            r, c = candidate
+            dr = r - current[0]
+            dc = c - current[1]
+            jump_point = self.jump(current, (dr, dc), goal, grid)
+            if jump_point is not None:
+                successors.append(jump_point)
+        return successors
+
+    def jump(self, current_cell, direction, goal, grid):
+        # Step from current_cell in one direction until we find a jump point (return it)
+        # or hit a wall / the edge / an illegal diagonal (return None).
+        # A loop rather than recursion, so long straight runs can't hit Python's recursion
+        # limit. The only nested call is the straight scan from each diagonal step, and a
+        # straight scan never calls jump() again, so the call depth is at most 2.
+        dr, dc = direction
+        row, col = current_cell
+
+        while True:
+            if not can_move(grid, row, col, dr, dc):
+                return None
+            row += dr
+            col += dc
+            self.cells_scanned += 1
+
+            if (row, col) == goal:
+                return (row, col)
+
+            if dr != 0 and dc != 0:
+                # Diagonal: no forced-neighbour check is needed here (see forced_neighbours).
+                # This cell is a jump point if a straight scan from it finds something.
+                if self.jump((row, col), (dr, 0), goal, grid) is not None:
+                    return (row, col)
+                if self.jump((row, col), (0, dc), goal, grid) is not None:
+                    return (row, col)
+            else:
+                if forced_neighbours((row, col), grid, direction):
+                    return (row, col)
 
 
 def sign(x):
@@ -99,19 +155,6 @@ def fill_in_path(jump_path):
     return path
 
 
-def identify_successors(current, parent, goal, grid):
-    valid = prune(parent, current, grid)
-    successors = []
-    for candidate in valid:
-        r, c = candidate
-        dr = r - current[0]
-        dc = c - current[1]
-        jump_point = jump(current, (dr, dc), goal, grid)
-        if jump_point is not None:
-            successors.append(jump_point)
-    return successors
-
-
 def prune(parent, current, grid):
     row, col = current
     dr = sign(current[0] - parent[0])
@@ -132,14 +175,12 @@ def prune(parent, current, grid):
 
 
 def forced_neighbours(current_cell, grid, direction):
+    # Only for straight moves. Without corner cutting, a diagonal move never creates forced
+    # neighbours: both cells beside the diagonal were free, so the parent could already
+    # reach everything behind us without going through this cell.
     row, col = current_cell
     dr, dc = direction
     forced = []
-
-    # Without corner cutting, a diagonal move never creates forced neighbours: both cells
-    # beside the diagonal were free, so the parent can reach everything behind us itself.
-    if dr != 0 and dc != 0:
-        return forced
 
     # The two sides perpendicular to the direction of travel.
     if dr == 0:
@@ -147,6 +188,7 @@ def forced_neighbours(current_cell, grid, direction):
     else:
         sides = [(0, -1), (0, 1)]
 
+    # Check both sides, so a cell with openings on both sides keeps both forced neighbours.
     for sr, sc in sides:
         side_cell = (row + sr, col + sc)
         behind_side = (row + sr - dr, col + sc - dc)
@@ -156,22 +198,3 @@ def forced_neighbours(current_cell, grid, direction):
             forced.append(side_cell)
             forced.append((row + sr + dr, col + sc + dc))
     return forced
-
-
-def jump(current_cell, direction, goal, grid):
-    dr, dc = direction
-    row, col = current_cell
-    if not can_move(grid, row, col, dr, dc):
-        return None
-
-    n = (row + dr, col + dc)
-    if n == goal:
-        return n
-    if forced_neighbours(n, grid, direction):
-        return n
-    if dr != 0 and dc != 0:
-        # A diagonal jump stops if a straight jump from here would find something.
-        for subdirection in [(dr, 0), (0, dc)]:
-            if jump(n, subdirection, goal, grid) is not None:
-                return n
-    return jump(n, direction, goal, grid)

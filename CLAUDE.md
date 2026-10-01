@@ -7,7 +7,9 @@ explain every line matter more than clever code.
 ## How it fits together
 
 - `grid.py` – `Grid` stores per-cell costs in a NumPy array. `np.inf` means wall,
-  values > 1 are "mud". Also has `in_bounds()` and `get_prox()` (4-directional neighbours).
+  values > 1 are "mud". Also has `in_bounds()` and `get_neighbours(row, col, grid, movement)`,
+  which returns `((row, col), step_length)` pairs for movement 4 or 8 (diagonal = sqrt(2),
+  no corner cutting).
 - `algos/base.py` – `PathAlgo`, the abstract base class. Every algorithm subclasses it
   and implements `search(start, end, grid)`.
 - `search()` is a generator: it yields `(visited_set, None)` after each expansion step and
@@ -15,9 +17,13 @@ explain every line matter more than clever code.
 - `game_window.py` – the Pygame loop. It calls `next()` on the generator once per frame to
   animate the search, and lets the user draw walls/mud and pick an algorithm.
 - Dijkstra (`algos/dijkstra.py`), A* (`algos/astar.py`) and Bidirectional (`algos/bidirectional.py`)
-  are 4-directional and respect mud costs. Moving into a cell costs that cell's value.
+  take `movement=4` (default) or `movement=8` and respect mud costs.
+  Move cost = step length * cost of the cell entered. A* uses Manhattan (4) or octile (8).
+  The UI has a 4-dir / 8-dir toggle, locked to 8-dir while JPS is selected.
+- `algos/heuristics.py` – `manhattan()` and `octile()`, shared by A* and JPS.
 - JPS (`algos/jps.py`) is 8-directional with no corner cutting, and assumes uniform cost
   (it ignores mud). It returns the full cell-by-cell path, not just the jump points.
+  `jump()` is iterative. After a search, `nodes_expanded` and `cells_scanned` hold the counts.
 - Run the app: `.venv/bin/python game_window.py`
 
 ## Rules for every task

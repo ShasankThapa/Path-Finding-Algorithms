@@ -1,9 +1,13 @@
 from algos.base import PathAlgo
-from grid import get_prox
+from grid import get_neighbours
 import heapq as hq
 
 
 class Bidirect(PathAlgo):
+    def __init__(self, movement=4):
+        # 4 = up/down/left/right only, 8 = diagonals too (see grid.get_neighbours).
+        self.movement = movement
+
     def search(self, start, end, grid):
         distance_f = {start: 0}
         came_from_f = {}
@@ -42,14 +46,14 @@ class Bidirect(PathAlgo):
                     meeting_node = current_cell
 
             row, col = current_cell
-            for prox in get_prox(row, col, grid):
+            for prox, step_length in get_neighbours(row, col, grid, self.movement):
                 if forward:
                     # Real move is current_cell -> prox, so we pay for entering prox.
-                    step_cost = grid.get_cost(prox[0], prox[1])
+                    step_cost = step_length * grid.get_cost(prox[0], prox[1])
                 else:
                     # The backward search walks the path in reverse. The real move is
                     # prox -> current_cell, so we pay for entering current_cell.
-                    step_cost = grid.get_cost(row, col)
+                    step_cost = step_length * grid.get_cost(row, col)
                 new_cost = current_cost + step_cost
                 if new_cost < distance.get(prox, float('inf')):
                     distance[prox] = new_cost

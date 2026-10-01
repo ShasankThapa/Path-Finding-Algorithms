@@ -42,3 +42,17 @@ Every random mud grid where Bidirectional did finish gave the optimal cost.
 The validity test stops at the first problem in a path, so a path with both problems is
 counted once. Jump-point paths are costed segment by segment (`path_cost_8dir`), so the cost
 test doesn't fail just because of problem 1.
+
+## After the JPS fixes
+
+Recorded with the suite as it stands after the JPS task (3 JPS tests were added since the
+baseline: long corridor, forced neighbours on both sides, node/scan counters).
+
+| JPS version | JPS tests failed |
+|---|---|
+| Original (before any fix) | 77 of 103 run (the 74 above + the 3 new tests) |
+| Fixed but still recursive (`1d5ebde`) | 2 (long corridor, counters) |
+| Current | 0 |
+
+Extra check, 500 unseen seeds per wall density (sizes 10x10 to 40x40), JPS against
+`reference_8dir`: 500/500 passed at 10%, 20%, 30% and 40% walls.

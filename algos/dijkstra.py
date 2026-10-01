@@ -1,8 +1,12 @@
 from algos.base import PathAlgo
-from grid import get_prox
+from grid import get_neighbours
 import heapq as hq
 
 class Dijkstra(PathAlgo):
+    def __init__(self, movement=4):
+        # 4 = up/down/left/right only, 8 = diagonals too (see grid.get_neighbours).
+        self.movement = movement
+
     def search(self, start, end, grid):
         distance = {start: 0}
         came_from = {}
@@ -20,8 +24,8 @@ class Dijkstra(PathAlgo):
             if current_cell == end:
                 break
             row, col = current_cell
-            for prox in get_prox(row, col, grid):
-                new_cost = current_cost + grid.get_cost(prox[0], prox[1])
+            for prox, step_length in get_neighbours(row, col, grid, self.movement):
+                new_cost = current_cost + step_length * grid.get_cost(prox[0], prox[1])
                 if new_cost < distance.get(prox, float('inf')):
                     distance[prox] = new_cost
                     came_from[prox] = current_cell

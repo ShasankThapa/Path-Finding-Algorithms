@@ -39,7 +39,8 @@ def reference_4dir(grid, start, end):
 
 
 def reference_8dir(grid, start, end):
-    # Plain Dijkstra, 8 directions, uniform cost: straight = 1, diagonal = sqrt(2).
+    # Plain Dijkstra, 8 directions: straight step length = 1, diagonal = sqrt(2).
+    # Move cost = step length * cost of the cell entered (so mud works too).
     # No corner cutting: a diagonal move needs both orthogonal cells next to it to be free.
     best_cost = {start: 0}
     queue = [(0, start)]
@@ -71,7 +72,7 @@ def reference_8dir(grid, start, end):
                 else:
                     step = 1
 
-                new_cost = cost + step
+                new_cost = cost + step * grid.get_cost(r, c)
                 if new_cost < best_cost.get((r, c), math.inf):
                     best_cost[(r, c)] = new_cost
                     heapq.heappush(queue, (new_cost, (r, c)))

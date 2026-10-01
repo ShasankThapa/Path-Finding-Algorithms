@@ -1,11 +1,18 @@
 from algos.base import PathAlgo
-from grid import get_prox
+from grid import get_neighbours
+from algos.heuristics import manhattan, octile
 import heapq as hq
 
 class Astar(PathAlgo):
+    def __init__(self, movement=4):
+        # 4 = up/down/left/right only, 8 = diagonals too (see grid.get_neighbours).
+        self.movement = movement
+
     def search(self, start, end, grid):
         def heuristic(cell, end):
-            return abs(cell[0] - end[0]) + abs(cell[1] - end[1])
+            if self.movement == 4:
+                return manhattan(cell, end)
+            return octile(cell, end)
 
         distance = {start: 0}
         came_from = {}
@@ -23,8 +30,8 @@ class Astar(PathAlgo):
             if current_cell == end:
                 break
             row, col = current_cell
-            for prox in get_prox(row, col, grid):
-                new_cost = current_cost + grid.get_cost(prox[0], prox[1])
+            for prox, step_length in get_neighbours(row, col, grid, self.movement):
+                new_cost = current_cost + step_length * grid.get_cost(prox[0], prox[1])
                 if new_cost < distance.get(prox, float('inf')):
                     distance[prox] = new_cost
                     came_from[prox] = current_cell

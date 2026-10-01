@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 
 class Grid():
@@ -22,15 +24,29 @@ def in_bounds(grid, row, col):
     return 0 <= row < grid.height and 0 <= col < grid.width
 
 
-def get_prox( row, col, grid):
-    candidates = [
-        (row - 1, col),
-        (row + 1, col),
-        (row, col - 1),
-        (row, col + 1),
-    ]
+def get_neighbours(row, col, grid, movement):
+    # Returns a list of ((row, col), step_length) pairs.
+    # movement = 4: up, down, left, right, each with step length 1.
+    # movement = 8: also the four diagonals, with step length sqrt(2). No corner cutting:
+    # a diagonal is only allowed if both cells beside it are free.
+    if movement != 4 and movement != 8:
+        raise ValueError("movement must be 4 or 8")
+
     neighbours = []
-    for (r, c) in candidates:
+    for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        r = row + dr
+        c = col + dc
         if in_bounds(grid, r, c) and not grid.is_wall(r, c):
-            neighbours.append((r, c))
+            neighbours.append(((r, c), 1))
+
+    if movement == 8:
+        for dr, dc in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
+            r = row + dr
+            c = col + dc
+            if not in_bounds(grid, r, c) or grid.is_wall(r, c):
+                continue
+            if grid.is_wall(row + dr, col) or grid.is_wall(row, col + dc):
+                continue
+            neighbours.append(((r, c), math.sqrt(2)))
+
     return neighbours

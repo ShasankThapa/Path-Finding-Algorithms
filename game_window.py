@@ -47,8 +47,10 @@ def main():
     algo_button = pygame.Rect(300, 10, BUTTON_WIDTH, BUTTON_HEIGHT)
     mud_button = pygame.Rect(440, 10, BUTTON_WIDTH, BUTTON_HEIGHT)
     wall_button = pygame.Rect(580, 10, BUTTON_WIDTH, BUTTON_HEIGHT)
+    movement_button = pygame.Rect(720, 10, BUTTON_WIDTH, BUTTON_HEIGHT)
 
     mode = "wall"
+    movement = 4
     mouse_held = False
 
     running = True
@@ -74,7 +76,19 @@ def main():
                     current_path = None
                     visited_so_far = set()
                     algo_class = ALGORITHMS[selected_algo]
-                    search_generator = algo_class().search(start, end, g)
+                    if algo_class is JPS:
+                        # JPS only works with 8-directional movement.
+                        algo = JPS()
+                    else:
+                        algo = algo_class(movement)
+                    search_generator = algo.search(start, end, g)
+                elif movement_button.collidepoint(mouse_x, mouse_y):
+                    # Locked while JPS is selected, since JPS is always 8-directional.
+                    if ALGORITHMS[selected_algo] is not JPS:
+                        if movement == 4:
+                            movement = 8
+                        else:
+                            movement = 4
                 elif algo_button.collidepoint(mouse_x, mouse_y):
                     current_index = algo_list.index(selected_algo)
                     next_index = (current_index + 1) % len(algo_list)
@@ -159,6 +173,14 @@ def main():
 
         pygame.draw.rect(screen, (80, 80, 80), wall_button)
         screen.blit(font.render("Wall Edit", True, (255, 255, 255)), (585, 20))
+
+        if ALGORITHMS[selected_algo] is JPS:
+            # Darker button and fixed label to show the toggle is locked.
+            pygame.draw.rect(screen, (50, 50, 50), movement_button)
+            screen.blit(font.render("8-dir (JPS)", True, (160, 160, 160)), (725, 20))
+        else:
+            pygame.draw.rect(screen, (80, 80, 80), movement_button)
+            screen.blit(font.render(f"{movement}-dir", True, (255, 255, 255)), (725, 20))
 
         pygame.display.flip()
         clock.tick(FPS)
