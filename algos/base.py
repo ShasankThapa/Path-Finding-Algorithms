@@ -28,14 +28,32 @@ class PathAlgo(ABC):
         pass
 
 
+def step_search(algo, generator):
+    # Advances a search by one step and adds the time spent inside it to
+    # algo.stats["search_time_ms"]. Only the time inside the search is counted, so the UI
+    # can draw between steps without the drawing being timed.
+    # Returns the yielded (visited, path), or None once the search has finished.
+    # Each yield costs the same small amount whichever algorithm is running, so the
+    # comparison between algorithms stays fair.
+    step_start = time.perf_counter()
+    try:
+        result = next(generator)
+    except StopIteration:
+        result = None
+    elapsed_ms = (time.perf_counter() - step_start) * 1000
+    if algo.stats["search_time_ms"] is None:
+        algo.stats["search_time_ms"] = 0
+    algo.stats["search_time_ms"] += elapsed_ms
+    return result
+
+
 def run_to_completion(algo, start, end, grid):
-    # Runs a search with no drawing and times it, so search_time_ms is pure search time.
-    # The generator still yields after every expansion step. Each yield costs the same
-    # small amount whichever algorithm is running, so the comparison stays fair.
-    start_time = time.perf_counter()
+    # Runs a search to the end with no drawing, timed the same way as the animation.
+    generator = algo.search(start, end, grid)
     visited = set()
     path = None
-    for visited, path in algo.search(start, end, grid):
-        pass
-    algo.stats["search_time_ms"] = (time.perf_counter() - start_time) * 1000
+    result = step_search(algo, generator)
+    while result is not None:
+        visited, path = result
+        result = step_search(algo, generator)
     return visited, path

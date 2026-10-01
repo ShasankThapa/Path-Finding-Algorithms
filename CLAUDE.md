@@ -15,10 +15,8 @@ explain every line matter more than clever code.
 - `search()` is a generator: it yields `(visited_set, None)` after each expansion step and
   finally `(visited_set, path)` (or `(visited_set, None)` if no path exists).
 - Each algorithm fills `self.stats` (nodes_expanded, cells_scanned, path_cost,
-  path_length_cells, search_time_ms) as it runs. `run_to_completion()` in `algos/base.py`
-  drains a search with no UI and sets search_time_ms. The UI times one such run when Run is
-  pressed and animates a second copy; a side panel shows live stats and the last result per
-  algorithm on the current map (cleared when the map changes).
+  path_length_cells, search_time_ms) as it runs. A side panel shows live stats and the last
+  result per algorithm on the current map (cleared when the map changes).
 - `game_window.py` – the Pygame loop. It calls `next()` on the generator once per frame to
   animate the search, and lets the user draw walls/mud and pick an algorithm.
 - Dijkstra (`algos/dijkstra.py`), A* (`algos/astar.py`) and Bidirectional (`algos/bidirectional.py`)
@@ -35,6 +33,13 @@ explain every line matter more than clever code.
 - `race.py` – Race mode: `RACE_ALGORITHMS` at the top lists the racers. Each `Racer` has its own
   layout/background/overlay; all advance the same number of steps (yields) per frame and are
   ranked by steps taken. Race mode uses the current map; editing only happens in normal mode.
+- `maps_io.py` – loads Moving AI `.map` files ('.', 'G', 'S' passable; everything else is a wall)
+  and `.map.scen` scenarios (x = column, y = row, so start = (y, x)). Maps live in `maps/`;
+  the "Next map" button cycles the editable grid and every map there.
+- Timing: `step_search()` in `algos/base.py` times only the time inside each search step, so
+  the UI animation and `run_to_completion()` measure the same way, with no separate timed run.
+- `pytest -m movingai` runs the slow benchmark check (A* 8-dir and JPS vs official optimal
+  lengths, 50 scenarios per map). It is excluded from the default `pytest` run.
 - Run the app: `.venv/bin/python game_window.py` (optional size: `game_window.py 200 200`).
   Keys 1-5 or +/- set search steps per frame. Drag the start/end markers to move them.
 

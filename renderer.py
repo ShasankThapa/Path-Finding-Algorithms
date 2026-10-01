@@ -168,9 +168,9 @@ def format_cost(cost):
     return f"{cost:.2f}"
 
 
-def draw_current_stats(screen, font, small_font, x, y, label, live_stats, timed_stats, searching):
-    # The run in progress (or just finished). Counts come from the animated search so
-    # they tick up live; the time comes from the separate run with no animation.
+def draw_current_stats(screen, font, small_font, x, y, label, live_stats, searching):
+    # The run in progress (or just finished). Everything comes from the animated search,
+    # so counts tick up live. The time only counts time spent inside the search.
     draw_text(screen, font, "Stats", (x, y))
     y += 30
     if label is None:
@@ -180,12 +180,15 @@ def draw_current_stats(screen, font, small_font, x, y, label, live_stats, timed_
     if searching:
         cost_text = "searching..."
         length_text = "searching..."
+        time_text = "searching..."
     elif live_stats["path_cost"] is None:
         cost_text = "No path"
         length_text = "No path"
+        time_text = f"{live_stats['search_time_ms']:.1f} ms"
     else:
         cost_text = format_cost(live_stats["path_cost"])
         length_text = f"{live_stats['path_length_cells']} cells"
+        time_text = f"{live_stats['search_time_ms']:.1f} ms"
 
     lines = [
         f"Algorithm: {label}",
@@ -193,12 +196,12 @@ def draw_current_stats(screen, font, small_font, x, y, label, live_stats, timed_
         f"Cells scanned: {live_stats['cells_scanned']}",
         f"Path cost: {cost_text}",
         f"Path length: {length_text}",
-        f"Time: {timed_stats['search_time_ms']:.1f} ms",
+        f"Time: {time_text}",
     ]
     for line in lines:
         draw_text(screen, small_font, line, (x, y))
         y += 22
-    draw_text(screen, small_font, "(time = search only, no animation)", (x, y), TEXT_LOCKED)
+    draw_text(screen, small_font, "(time = search only, not drawing)", (x, y), TEXT_LOCKED)
 
 
 def draw_results_table(screen, font, small_font, x, y, last_results):

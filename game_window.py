@@ -1,4 +1,7 @@
+import glob
 import math
+import os
+import random
 import sys
 
 import numpy as np
@@ -6,12 +9,13 @@ import pygame
 
 import race
 import renderer
-from algos.base import run_to_completion
+from algos.base import step_search
 from algos.dijkstra import Dijkstra
 from algos.astar import Astar
 from algos.bidirectional import Bidirect
 from algos.jps import JPS
 from grid import Grid
+from maps_io import load_movingai_map, load_scenarios
 
 GRID_AREA_WIDTH = 850
 PANEL_WIDTH = 300
@@ -25,6 +29,7 @@ BUTTON_WIDTH = 120
 BUTTON_HEIGHT = 40
 FPS = 60
 MUD_COST = 3.0
+MAPS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "maps")
 
 # Search steps per frame for keys 1-5. +/- moves up and down this list.
 SPEEDS = [1, 5, 25, 100, 500]
@@ -48,6 +53,32 @@ def make_algorithm(selected_algo, movement):
         # JPS only works with 8-directional movement.
         return JPS()
     return algo_class(movement)
+
+
+def find_map_files():
+    return sorted(glob.glob(os.path.join(MAPS_FOLDER, "*.map")))
+
+
+def load_map(map_path, grid_width, grid_height):
+    # map_path None means the blank editable grid. Returns (grid, scenarios, name).
+    if map_path is None:
+        return Grid(grid_width, grid_height, 1), [], "Editable grid"
+    grid = load_movingai_map(map_path)
+    scenario_path = map_path + ".scen"
+    if os.path.exists(scenario_path):
+        scenarios = load_scenarios(scenario_path)
+    else:
+        scenarios = []
+    return grid, scenarios, os.path.basename(map_path)
+
+
+def default_markers(grid):
+    # The first and last free cells in reading order. On a blank grid these are the
+    # top-left and bottom-right corners; on a benchmark map they avoid walls.
+    free_cells = np.argwhere(~np.isinf(grid.grid))
+    first = free_cells[0]
+    last = free_cells[-1]
+    return (int(first[0]), int(first[1])), (int(last[0]), int(last[1]))
 
 
 def run_label(selected_algo, movement):
@@ -77,11 +108,15 @@ def main(grid_width=50, grid_height=50):
     panel_x = GRID_AREA_WIDTH + 15
     status_top = TOOLBAR_HEIGHT + GRID_AREA_HEIGHT
 
-    g = Grid(grid_width, grid_height, 1)
+    # The maps to cycle through: the blank editable grid, then every Moving AI map in maps/.
+    map_paths = [None] + find_map_files()
+    map_index = 0
+    g, scenarios, map_name = load_map(map_paths[map_index], grid_width, grid_height)
     layout = renderer.GridLayout(g, grid_area)
     background = renderer.build_background(g, layout)
-    start = (0, 0)
-    end = (g.height - 1, g.width - 1)
+    start, end = default_markers(g)
+    current_scenario = None
+    race_allowed = race.map_fits(g, grid_area)
 
     # Search state. drawn_visited remembers which cells are already on the overlay,
     # so each frame only the newly visited cells get drawn.
@@ -91,11 +126,9 @@ def main(grid_width=50, grid_height=50):
     drawn_visited = set()
 
     # Stats panel state. animated_algo fills in its stats live as the animation runs.
-    # timed_stats come from a separate run with no animation, for an honest time.
     # last_results keeps the latest finished result per algorithm for this map.
     current_label = None
     animated_algo = None
-    timed_stats = None
     last_results = {}
 
     # Race mode shows several algorithms side by side on the current map (see race.py).
@@ -118,6 +151,8 @@ def main(grid_width=50, grid_height=50):
     wall_button = pygame.Rect(580, 10, BUTTON_WIDTH, BUTTON_HEIGHT)
     movement_button = pygame.Rect(720, 10, BUTTON_WIDTH, BUTTON_HEIGHT)
     race_button = pygame.Rect(panel_x, 10, BUTTON_WIDTH, BUTTON_HEIGHT)
+    next_map_button = pygame.Rect(panel_x + 130, 10, BUTTON_WIDTH, BUTTON_HEIGHT)
+    scenario_button = pygame.Rect(panel_x, 60, 2 * BUTTON_WIDTH + 10, BUTTON_HEIGHT)
 
     running = True
     while running:
@@ -143,7 +178,7 @@ def main(grid_width=50, grid_height=50):
                     if race_mode:
                         race_mode = False
                         racers = None
-                    else:
+                    elif race_allowed:
                         # Race on the map as it is now. Editing only happens in normal mode.
                         race_mode = True
                         racers = race.make_racers(g, grid_area)
@@ -156,11 +191,27 @@ def main(grid_width=50, grid_height=50):
                     mode = "wall"
                 elif mud_button.collidepoint(mouse_x, mouse_y):
                     mode = "mud"
-                elif clear_button.collidepoint(mouse_x, mouse_y):
-                    g = Grid(grid_width, grid_height, 1)
+                elif clear_button.collidepoint(mouse_x, mouse_y) or next_map_button.collidepoint(mouse_x, mouse_y):
+                    # Clear reloads the current map; Next map moves on to the next one.
+                    if next_map_button.collidepoint(mouse_x, mouse_y):
+                        map_index = (map_index + 1) % len(map_paths)
+                    g, scenarios, map_name = load_map(map_paths[map_index], grid_width, grid_height)
+                    layout = renderer.GridLayout(g, grid_area)
                     background = renderer.build_background(g, layout)
-                    start = (0, 0)
-                    end = (g.height - 1, g.width - 1)
+                    start, end = default_markers(g)
+                    current_scenario = None
+                    race_allowed = race.map_fits(g, grid_area)
+                    search_generator = None
+                    current_path = None
+                    overlay = renderer.new_overlay(layout)
+                    drawn_visited = set()
+                    current_label = None
+                    last_results = {}
+                elif scenario_button.collidepoint(mouse_x, mouse_y) and scenarios:
+                    # Use an official start/goal pair from the map's .scen file.
+                    current_scenario = random.choice(scenarios)
+                    start = current_scenario.start
+                    end = current_scenario.goal
                     search_generator = None
                     current_path = None
                     overlay = renderer.new_overlay(layout)
@@ -168,12 +219,6 @@ def main(grid_width=50, grid_height=50):
                     current_label = None
                     last_results = {}
                 elif run_button.collidepoint(mouse_x, mouse_y):
-                    # First run the search once with no drawing, just to time it.
-                    timed_algo = make_algorithm(selected_algo, movement)
-                    run_to_completion(timed_algo, start, end, g)
-                    timed_stats = dict(timed_algo.stats)
-
-                    # Then start a fresh copy of the same search for the animation.
                     current_label = run_label(selected_algo, movement)
                     animated_algo = make_algorithm(selected_algo, movement)
                     search_generator = animated_algo.search(start, end, g)
@@ -233,6 +278,7 @@ def main(grid_width=50, grid_height=50):
                     current_path = None
                     current_label = None
                     last_results = {}
+                    current_scenario = None
                     if drawn_visited:
                         overlay = renderer.new_overlay(layout)
                         drawn_visited = set()
@@ -245,18 +291,19 @@ def main(grid_width=50, grid_height=50):
             race.advance_all(racers, SPEEDS[speed_index])
         elif search_generator is not None:
             for step in range(SPEEDS[speed_index]):
-                try:
-                    latest_visited, maybe_path = next(search_generator)
-                except StopIteration:
+                # step_search also times the step, so drawing between steps isn't counted.
+                result = step_search(animated_algo, search_generator)
+                if result is None:
                     finished = True
                     break
+                latest_visited, maybe_path = result
                 if maybe_path is not None:
                     current_path = maybe_path
                     finished = True
                     break
         if finished:
             search_generator = None
-            last_results[current_label] = timed_stats
+            last_results[current_label] = dict(animated_algo.stats)
         if latest_visited is not None:
             new_cells = latest_visited - drawn_visited
             renderer.draw_visited_cells(overlay, layout, new_cells)
@@ -283,18 +330,31 @@ def main(grid_width=50, grid_height=50):
         else:
             renderer.draw_button(screen, font, movement_button, f"{movement}-dir", locked=race_mode)
 
+        renderer.draw_button(screen, font, next_map_button, "Next map", locked=race_mode)
+        if scenarios and not race_mode:
+            renderer.draw_button(screen, font, scenario_button, "Random scenario")
+
+        map_text = f"Map: {map_name} ({g.width}x{g.height})"
+        renderer.draw_text(screen, small_font, map_text, (panel_x, 110))
+        if current_scenario is not None:
+            scenario_text = (f"Bucket {current_scenario.bucket}, "
+                             f"official optimal {current_scenario.optimal_length:.4f}")
+            renderer.draw_text(screen, small_font, scenario_text, (panel_x, 132), renderer.NOTE_TEXT)
+        elif not race_allowed:
+            renderer.draw_text(screen, small_font, "Too large for race view", (panel_x, 132), renderer.TEXT_LOCKED)
+
         if race_mode:
             renderer.draw_button(screen, font, race_button, "Back")
-            race.draw_race_summary(screen, font, small_font, panel_x, 65, racers)
+            race.draw_race_summary(screen, font, small_font, panel_x, 165, racers)
         else:
-            renderer.draw_button(screen, font, race_button, "Race")
+            renderer.draw_button(screen, font, race_button, "Race", locked=not race_allowed)
             searching = search_generator is not None
             if current_label is None:
-                renderer.draw_current_stats(screen, font, small_font, panel_x, 65, None, None, None, False)
+                renderer.draw_current_stats(screen, font, small_font, panel_x, 165, None, None, False)
             else:
-                renderer.draw_current_stats(screen, font, small_font, panel_x, 65, current_label,
-                                            animated_algo.stats, timed_stats, searching)
-            renderer.draw_results_table(screen, font, small_font, panel_x, 310, last_results)
+                renderer.draw_current_stats(screen, font, small_font, panel_x, 165, current_label,
+                                            animated_algo.stats, searching)
+            renderer.draw_results_table(screen, font, small_font, panel_x, 405, last_results)
 
         renderer.draw_legend(screen, small_font, 20, status_top + 8)
         speed_text = f"Speed: {SPEEDS[speed_index]} steps/frame (keys 1-5, +/-)"

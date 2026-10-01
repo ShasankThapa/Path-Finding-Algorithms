@@ -9,7 +9,7 @@ import pygame
 
 import renderer
 from algos.astar import Astar
-from algos.base import run_to_completion
+from algos.base import step_search
 from algos.dijkstra import Dijkstra
 from algos.jps import JPS
 
@@ -69,17 +69,11 @@ class Racer:
         self.steps = 0
         self.finished = False
         self.path = None
-        self.time_ms = None
         self.overlay = renderer.new_overlay(self.layout)
         self.drawn_visited = set()
 
     def start(self, grid, start, end):
         self.reset()
-        # Time a separate run with no drawing, as in normal mode.
-        timed_algo = make_algorithm(self.algo_class, self.movement)
-        run_to_completion(timed_algo, start, end, grid)
-        self.time_ms = timed_algo.stats["search_time_ms"]
-
         self.algo = make_algorithm(self.algo_class, self.movement)
         self.generator = self.algo.search(start, end, grid)
 
@@ -90,12 +84,13 @@ class Racer:
             return
         latest_visited = None
         for i in range(steps):
-            try:
-                latest_visited, path = next(self.generator)
-            except StopIteration:
+            # step_search also adds the time spent inside the search to algo.stats.
+            result = step_search(self.algo, self.generator)
+            if result is None:
                 self.finished = True
                 self.generator = None
                 break
+            latest_visited, path = result
             self.steps += 1
             if path is not None:
                 self.path = path
@@ -107,6 +102,13 @@ class Racer:
             new_cells = latest_visited - self.drawn_visited
             renderer.draw_visited_cells(self.overlay, self.layout, new_cells)
             self.drawn_visited.update(new_cells)
+
+
+def map_fits(grid, area):
+    # Each panel needs at least 1 pixel per cell, so very large maps can't be raced.
+    panel = split_into_panels(area, len(RACE_ALGORITHMS))[0]
+    grid_height_px = panel.height - PANEL_HEADER_HEIGHT
+    return grid.width <= panel.width and grid.height <= grid_height_px
 
 
 def make_racers(grid, area):
@@ -177,7 +179,7 @@ def draw_racer(screen, small_font, racer, start, end, position):
             if racer.algo_class is JPS and racer.map_has_mud:
                 cost_text += "*"
             result = f"cost {cost_text}, {stats['path_length_cells']} cells"
-        second_line = f"{ordinal(position)} in {racer.steps} steps: {result}, {racer.time_ms:.1f} ms"
+        second_line = f"{ordinal(position)} in {racer.steps} steps: {result}, {stats['search_time_ms']:.1f} ms"
         renderer.draw_text(screen, small_font, second_line, (x, y + 20), renderer.NOTE_TEXT)
     elif racer.generator is not None:
         renderer.draw_text(screen, small_font, f"step {racer.steps}", (x, y + 20), renderer.TEXT_LOCKED)

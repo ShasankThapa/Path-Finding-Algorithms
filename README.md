@@ -87,6 +87,8 @@ PathFinder/
 ├── game_window.py         # main window and event loop
 ├── renderer.py            # all drawing
 ├── race.py                # race mode
+├── maps_io.py             # Moving AI benchmark map and scenario loading
+├── maps/                  # Moving AI .map files (and .map.scen scenarios)
 ├── requirements.txt
 └── README.md
 ```
