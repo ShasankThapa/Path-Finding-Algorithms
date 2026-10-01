@@ -26,12 +26,14 @@ class Bidirect(PathAlgo):
                     continue
                 visited_f.add(current_cell)
                 distance, came_from, queue, distance_other = distance_f, came_from_f, queue_f, distance_b
+                forward = True
             else:
                 current_cost, current_cell = hq.heappop(queue_b)
                 if current_cell in visited_b:
                     continue
                 visited_b.add(current_cell)
                 distance, came_from, queue, distance_other = distance_b, came_from_b, queue_b, distance_f
+                forward = False
 
             if current_cell in distance_other:
                 combined = current_cost + distance_other[current_cell]
@@ -41,7 +43,14 @@ class Bidirect(PathAlgo):
 
             row, col = current_cell
             for prox in get_prox(row, col, grid):
-                new_cost = current_cost + grid.get_cost(prox[0], prox[1])
+                if forward:
+                    # Real move is current_cell -> prox, so we pay for entering prox.
+                    step_cost = grid.get_cost(prox[0], prox[1])
+                else:
+                    # The backward search walks the path in reverse. The real move is
+                    # prox -> current_cell, so we pay for entering current_cell.
+                    step_cost = grid.get_cost(row, col)
+                new_cost = current_cost + step_cost
                 if new_cost < distance.get(prox, float('inf')):
                     distance[prox] = new_cost
                     came_from[prox] = current_cell
@@ -53,6 +62,11 @@ class Bidirect(PathAlgo):
                             best = combined
                             meeting_node = prox
 
+            # If either side has run out of cells, it has explored everything it can reach,
+            # so no better meeting point exists. Checking this first also avoids
+            # reading queue[0] from an empty list.
+            if not queue_f or not queue_b:
+                break
             if best <= queue_f[0][0] + queue_b[0][0]:
                 break
 
