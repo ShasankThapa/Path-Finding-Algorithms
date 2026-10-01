@@ -40,6 +40,9 @@ explain every line matter more than clever code.
   the UI animation and `run_to_completion()` measure the same way, with no separate timed run.
 - `pytest -m movingai` runs the slow benchmark check (A* 8-dir and JPS vs official optimal
   lengths, 50 scenarios per map). It is excluded from the default `pytest` run.
+- `benchmark.py` – headless A* (8-dir) vs JPS benchmark (no Pygame). `python benchmark.py`
+  (~2 min) or `--quick` (~12 s). Aborts if any cost is wrong. Writes results/benchmark.csv,
+  results/summary.md and two charts.
 - Run the app: `.venv/bin/python game_window.py` (optional size: `game_window.py 200 200`).
   Keys 1-5 or +/- set search steps per frame. Drag the start/end markers to move them.
 
