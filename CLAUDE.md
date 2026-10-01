@@ -24,7 +24,11 @@ explain every line matter more than clever code.
 - JPS (`algos/jps.py`) is 8-directional with no corner cutting, and assumes uniform cost
   (it ignores mud). It returns the full cell-by-cell path, not just the jump points.
   `jump()` is iterative. After a search, `nodes_expanded` and `cells_scanned` hold the counts.
-- Run the app: `.venv/bin/python game_window.py`
+- `renderer.py` – all drawing. Background surface (walls/mud/floor) built once and patched per
+  painted cell; visited cells drawn incrementally onto an overlay; path and markers on top.
+  `GridLayout` maps cells to screen pixels so a grid can be drawn in any panel.
+- Run the app: `.venv/bin/python game_window.py` (optional size: `game_window.py 200 200`).
+  Keys 1-5 or +/- set search steps per frame. Drag the start/end markers to move them.
 
 ## Rules for every task
 
