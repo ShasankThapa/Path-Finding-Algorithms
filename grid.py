@@ -1,4 +1,3 @@
-from algos.algo_rule import PathAlgo
 import numpy as np
 
 class Grid():
@@ -6,7 +5,8 @@ class Grid():
         self.width = width
         self.height = height
         self.fill_value = fill_value
-        self.grid = np.full((width, height), fill_value, dtype = float)
+        # NumPy arrays are indexed [row, col], so the shape is (rows, cols) = (height, width).
+        self.grid = np.full((height, width), fill_value, dtype = float)
 
     def set_cost(self, row, col, update_cost):
         self.grid[row,col] = update_cost
@@ -31,9 +31,6 @@ def get_prox( row, col, grid):
     ]
     neighbours = []
     for (r, c) in candidates:
-        if 0 <= r < grid.height and 0 <= c < grid.width and not grid.is_wall(r, c):
+        if in_bounds(grid, r, c) and not grid.is_wall(r, c):
             neighbours.append((r, c))
     return neighbours
-
-
-

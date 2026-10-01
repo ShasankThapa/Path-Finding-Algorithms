@@ -1,8 +1,6 @@
-from algos.algo_rule import PathAlgo
-from grid import Grid, get_prox, in_bounds
-import numpy as np
+from algos.base import PathAlgo
+from grid import in_bounds
 import heapq as hq
-import time
 class JPS(PathAlgo):
     def search(self, start, end, grid):
         def heuristic(cell, end):

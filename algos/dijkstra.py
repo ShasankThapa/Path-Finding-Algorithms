@@ -1,21 +1,16 @@
-from algos.algo_rule import PathAlgo
-from grid import Grid, get_prox
-import numpy as np
+from algos.base import PathAlgo
+from grid import get_prox
 import heapq as hq
-import time
 
-class Astar(PathAlgo):
+class Dijkstra(PathAlgo):
     def search(self, start, end, grid):
-        def heuristic(cell, end):
-            return abs(cell[0] - end[0]) + abs(cell[1] - end[1])
-
         distance = {start: 0}
         came_from = {}
         visited = set()
-        queue = [(heuristic(start, end), 0, start)]
+        queue = [(0, start)]
 
         while queue:
-            priority, current_cost, current_cell = hq.heappop(queue)
+            current_cost, current_cell = hq.heappop(queue)
             if current_cell in visited:
                 continue
             visited.add(current_cell)
@@ -30,7 +25,7 @@ class Astar(PathAlgo):
                 if new_cost < distance.get(prox, float('inf')):
                     distance[prox] = new_cost
                     came_from[prox] = current_cell
-                    hq.heappush(queue, (new_cost + heuristic(prox, end), new_cost, prox))
+                    hq.heappush(queue, (new_cost, prox))
 
         if end in came_from or end == start:
             path = [end]
@@ -40,3 +35,4 @@ class Astar(PathAlgo):
             yield visited, path
         else:
             yield visited, None
+

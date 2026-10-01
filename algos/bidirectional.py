@@ -1,13 +1,10 @@
-from algos.algo_rule import PathAlgo
-from grid import Grid, get_prox
-import numpy as np
+from algos.base import PathAlgo
+from grid import get_prox
 import heapq as hq
-import time
 
 
 class Bidirect(PathAlgo):
     def search(self, start, end, grid):
-        start_time = time.time()
         distance_f = {start: 0}
         came_from_f = {}
         visited_f = set()
@@ -58,9 +55,6 @@ class Bidirect(PathAlgo):
 
             if best <= queue_f[0][0] + queue_b[0][0]:
                 break
-
-        end_time = time.time()
-        path_runtime = end_time - start_time
 
         if meeting_node is None:
             yield visited_f | visited_b, None
