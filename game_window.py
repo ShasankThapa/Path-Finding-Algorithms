@@ -4,6 +4,7 @@ import sys
 import numpy as np
 import pygame
 
+import race
 import renderer
 from algos.base import run_to_completion
 from algos.dijkstra import Dijkstra
@@ -97,6 +98,10 @@ def main(grid_width=50, grid_height=50):
     timed_stats = None
     last_results = {}
 
+    # Race mode shows several algorithms side by side on the current map (see race.py).
+    race_mode = False
+    racers = None
+
     algo_list = list(ALGORITHMS.keys())
     selected_algo = "Dijkstra"
     movement = 4
@@ -112,6 +117,7 @@ def main(grid_width=50, grid_height=50):
     mud_button = pygame.Rect(440, 10, BUTTON_WIDTH, BUTTON_HEIGHT)
     wall_button = pygame.Rect(580, 10, BUTTON_WIDTH, BUTTON_HEIGHT)
     movement_button = pygame.Rect(720, 10, BUTTON_WIDTH, BUTTON_HEIGHT)
+    race_button = pygame.Rect(panel_x, 10, BUTTON_WIDTH, BUTTON_HEIGHT)
 
     running = True
     while running:
@@ -126,11 +132,27 @@ def main(grid_width=50, grid_height=50):
                     speed_index = min(speed_index + 1, len(SPEEDS) - 1)
                 elif event.key in SLOWER_KEYS:
                     speed_index = max(speed_index - 1, 0)
+                elif event.key == pygame.K_ESCAPE:
+                    race_mode = False
+                    racers = None
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_x, mouse_y = event.pos
 
-                if wall_button.collidepoint(mouse_x, mouse_y):
+                if race_button.collidepoint(mouse_x, mouse_y):
+                    if race_mode:
+                        race_mode = False
+                        racers = None
+                    else:
+                        # Race on the map as it is now. Editing only happens in normal mode.
+                        race_mode = True
+                        racers = race.make_racers(g, grid_area)
+                elif race_mode:
+                    # In race mode the map can't be edited; only Run does anything.
+                    if run_button.collidepoint(mouse_x, mouse_y):
+                        for racer in racers:
+                            racer.start(g, start, end)
+                elif wall_button.collidepoint(mouse_x, mouse_y):
                     mode = "wall"
                 elif mud_button.collidepoint(mouse_x, mouse_y):
                     mode = "mud"
@@ -218,7 +240,10 @@ def main(grid_width=50, grid_height=50):
         # Advance the search by several steps per frame, then draw only the new cells.
         latest_visited = None
         finished = False
-        if search_generator is not None:
+        if race_mode:
+            # Every racer takes the same number of steps, so the race is fair in steps.
+            race.advance_all(racers, SPEEDS[speed_index])
+        elif search_generator is not None:
             for step in range(SPEEDS[speed_index]):
                 try:
                     latest_visited, maybe_path = next(search_generator)
@@ -238,34 +263,43 @@ def main(grid_width=50, grid_height=50):
             drawn_visited.update(new_cells)
 
         screen.fill(renderer.BACKGROUND)
-        renderer.draw_grid_layers(screen, layout, background, overlay)
-        if current_path:
-            renderer.draw_path(screen, layout, current_path)
-        renderer.draw_marker(screen, layout, start, renderer.START)
-        renderer.draw_marker(screen, layout, end, renderer.END)
+        if race_mode:
+            race.draw_race(screen, small_font, racers, start, end)
+        else:
+            renderer.draw_grid_layers(screen, layout, background, overlay)
+            if current_path:
+                renderer.draw_path(screen, layout, current_path)
+            renderer.draw_marker(screen, layout, start, renderer.START)
+            renderer.draw_marker(screen, layout, end, renderer.END)
 
+        # Editing buttons are shown locked in race mode.
         renderer.draw_button(screen, font, run_button, "Run")
-        renderer.draw_button(screen, font, clear_button, "Clear")
-        renderer.draw_button(screen, font, algo_button, selected_algo)
-        renderer.draw_button(screen, font, mud_button, "Mud Edit")
-        renderer.draw_button(screen, font, wall_button, "Wall Edit")
+        renderer.draw_button(screen, font, clear_button, "Clear", locked=race_mode)
+        renderer.draw_button(screen, font, algo_button, selected_algo, locked=race_mode)
+        renderer.draw_button(screen, font, mud_button, "Mud Edit", locked=race_mode)
+        renderer.draw_button(screen, font, wall_button, "Wall Edit", locked=race_mode)
         if ALGORITHMS[selected_algo] is JPS:
             renderer.draw_button(screen, font, movement_button, "8-dir (JPS)", locked=True)
         else:
-            renderer.draw_button(screen, font, movement_button, f"{movement}-dir")
+            renderer.draw_button(screen, font, movement_button, f"{movement}-dir", locked=race_mode)
 
-        searching = search_generator is not None
-        if current_label is None:
-            renderer.draw_current_stats(screen, font, small_font, panel_x, 15, None, None, None, False)
+        if race_mode:
+            renderer.draw_button(screen, font, race_button, "Back")
+            race.draw_race_summary(screen, font, small_font, panel_x, 65, racers)
         else:
-            renderer.draw_current_stats(screen, font, small_font, panel_x, 15, current_label,
-                                        animated_algo.stats, timed_stats, searching)
-        renderer.draw_results_table(screen, font, small_font, panel_x, 260, last_results)
+            renderer.draw_button(screen, font, race_button, "Race")
+            searching = search_generator is not None
+            if current_label is None:
+                renderer.draw_current_stats(screen, font, small_font, panel_x, 65, None, None, None, False)
+            else:
+                renderer.draw_current_stats(screen, font, small_font, panel_x, 65, current_label,
+                                            animated_algo.stats, timed_stats, searching)
+            renderer.draw_results_table(screen, font, small_font, panel_x, 310, last_results)
 
         renderer.draw_legend(screen, small_font, 20, status_top + 8)
         speed_text = f"Speed: {SPEEDS[speed_index]} steps/frame (keys 1-5, +/-)"
         renderer.draw_text(screen, small_font, speed_text, (20, status_top + 34))
-        if ALGORITHMS[selected_algo] is JPS:
+        if ALGORITHMS[selected_algo] is JPS and not race_mode:
             renderer.draw_text(screen, small_font, "Assumes uniform cost: mud is treated as floor",
                                (440, status_top + 34), renderer.NOTE_TEXT)
 

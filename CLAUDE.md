@@ -32,6 +32,9 @@ explain every line matter more than clever code.
 - `renderer.py` – all drawing. Background surface (walls/mud/floor) built once and patched per
   painted cell; visited cells drawn incrementally onto an overlay; path and markers on top.
   `GridLayout` maps cells to screen pixels so a grid can be drawn in any panel.
+- `race.py` – Race mode: `RACE_ALGORITHMS` at the top lists the racers. Each `Racer` has its own
+  layout/background/overlay; all advance the same number of steps (yields) per frame and are
+  ranked by steps taken. Race mode uses the current map; editing only happens in normal mode.
 - Run the app: `.venv/bin/python game_window.py` (optional size: `game_window.py 200 200`).
   Keys 1-5 or +/- set search steps per frame. Drag the start/end markers to move them.
 
