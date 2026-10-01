@@ -6,9 +6,11 @@ import heapq as hq
 class Bidirect(PathAlgo):
     def __init__(self, movement=4):
         # 4 = up/down/left/right only, 8 = diagonals too (see grid.get_neighbours).
+        super().__init__()
         self.movement = movement
 
     def search(self, start, end, grid):
+        self.reset_stats()
         distance_f = {start: 0}
         came_from_f = {}
         visited_f = set()
@@ -19,16 +21,22 @@ class Bidirect(PathAlgo):
         visited_b = set()
         queue_b = [(0, end)]
 
+        # Cells visited by either side, for the visualiser. Kept up to date as we go
+        # rather than yielding visited_f | visited_b, which built a whole new set on
+        # every step and made big maps very slow.
+        visited = set()
+
         best = float('inf')
         meeting_node = None
 
         while queue_f and queue_b:
-            yield visited_f | visited_b, None
+            yield visited, None
             if queue_f[0][0] <= queue_b[0][0]:
                 current_cost, current_cell = hq.heappop(queue_f)
                 if current_cell in visited_f:
                     continue
                 visited_f.add(current_cell)
+                visited.add(current_cell)
                 distance, came_from, queue, distance_other = distance_f, came_from_f, queue_f, distance_b
                 forward = True
             else:
@@ -36,8 +44,12 @@ class Bidirect(PathAlgo):
                 if current_cell in visited_b:
                     continue
                 visited_b.add(current_cell)
+                visited.add(current_cell)
                 distance, came_from, queue, distance_other = distance_b, came_from_b, queue_b, distance_f
                 forward = False
+
+            self.stats["nodes_expanded"] += 1
+            self.stats["cells_scanned"] += 1
 
             if current_cell in distance_other:
                 combined = current_cost + distance_other[current_cell]
@@ -75,7 +87,7 @@ class Bidirect(PathAlgo):
                 break
 
         if meeting_node is None:
-            yield visited_f | visited_b, None
+            yield visited, None
         else:
             path_f = [meeting_node]
             while path_f[-1] != start:
@@ -87,4 +99,5 @@ class Bidirect(PathAlgo):
                 path_b.append(came_from_b[path_b[-1]])
 
             full_path = path_f + path_b[1:]
-            yield visited_f | visited_b, full_path
+            self.record_path(full_path, best)
+            yield visited, full_path

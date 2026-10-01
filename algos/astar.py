@@ -6,9 +6,11 @@ import heapq as hq
 class Astar(PathAlgo):
     def __init__(self, movement=4):
         # 4 = up/down/left/right only, 8 = diagonals too (see grid.get_neighbours).
+        super().__init__()
         self.movement = movement
 
     def search(self, start, end, grid):
+        self.reset_stats()
         def heuristic(cell, end):
             if self.movement == 4:
                 return manhattan(cell, end)
@@ -24,6 +26,8 @@ class Astar(PathAlgo):
             if current_cell in visited:
                 continue
             visited.add(current_cell)
+            self.stats["nodes_expanded"] += 1
+            self.stats["cells_scanned"] += 1
 
             yield visited, None
 
@@ -42,6 +46,7 @@ class Astar(PathAlgo):
             while path[-1] != start:
                 path.append(came_from[path[-1]])
             path.reverse()
+            self.record_path(path, distance[end])
             yield visited, path
         else:
             yield visited, None

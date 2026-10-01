@@ -160,3 +160,67 @@ def draw_legend(screen, font, x, y):
         label_surface = font.render(label, True, TEXT)
         screen.blit(label_surface, (x + 20, y))
         x += 20 + label_surface.get_width() + 18
+
+
+def format_cost(cost):
+    if cost is None:
+        return "No path"
+    return f"{cost:.2f}"
+
+
+def draw_current_stats(screen, font, small_font, x, y, label, live_stats, timed_stats, searching):
+    # The run in progress (or just finished). Counts come from the animated search so
+    # they tick up live; the time comes from the separate run with no animation.
+    draw_text(screen, font, "Stats", (x, y))
+    y += 30
+    if label is None:
+        draw_text(screen, small_font, "Press Run to start a search.", (x, y), TEXT_LOCKED)
+        return
+
+    if searching:
+        cost_text = "searching..."
+        length_text = "searching..."
+    elif live_stats["path_cost"] is None:
+        cost_text = "No path"
+        length_text = "No path"
+    else:
+        cost_text = format_cost(live_stats["path_cost"])
+        length_text = f"{live_stats['path_length_cells']} cells"
+
+    lines = [
+        f"Algorithm: {label}",
+        f"Nodes expanded: {live_stats['nodes_expanded']}",
+        f"Cells scanned: {live_stats['cells_scanned']}",
+        f"Path cost: {cost_text}",
+        f"Path length: {length_text}",
+        f"Time: {timed_stats['search_time_ms']:.1f} ms",
+    ]
+    for line in lines:
+        draw_text(screen, small_font, line, (x, y))
+        y += 22
+    draw_text(screen, small_font, "(time = search only, no animation)", (x, y), TEXT_LOCKED)
+
+
+def draw_results_table(screen, font, small_font, x, y, last_results):
+    # The most recent finished result for each algorithm on the current map.
+    draw_text(screen, font, "Last results (this map)", (x, y))
+    y += 30
+    columns = [("Algorithm", 0), ("Cost", 115), ("Nodes", 185), ("ms", 240)]
+    for heading, offset in columns:
+        draw_text(screen, small_font, heading, (x + offset, y), TEXT_LOCKED)
+    y += 22
+    if not last_results:
+        draw_text(screen, small_font, "No finished runs yet.", (x, y), TEXT_LOCKED)
+        return
+    for label, stats in last_results.items():
+        cost_text = format_cost(stats["path_cost"])
+        if label == "JPS" and stats["path_cost"] is not None:
+            # JPS treats mud as floor, so its cost isn't comparable on a map with mud.
+            cost_text += "*"
+        draw_text(screen, small_font, label, (x, y))
+        draw_text(screen, small_font, cost_text, (x + 115, y))
+        draw_text(screen, small_font, str(stats["nodes_expanded"]), (x + 185, y))
+        draw_text(screen, small_font, f"{stats['search_time_ms']:.1f}", (x + 240, y))
+        y += 22
+    if "JPS" in last_results:
+        draw_text(screen, small_font, "* JPS cost treats mud as floor", (x, y + 6), NOTE_TEXT)

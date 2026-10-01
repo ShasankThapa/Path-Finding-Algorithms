@@ -5,9 +5,11 @@ import heapq as hq
 class Dijkstra(PathAlgo):
     def __init__(self, movement=4):
         # 4 = up/down/left/right only, 8 = diagonals too (see grid.get_neighbours).
+        super().__init__()
         self.movement = movement
 
     def search(self, start, end, grid):
+        self.reset_stats()
         distance = {start: 0}
         came_from = {}
         visited = set()
@@ -18,6 +20,8 @@ class Dijkstra(PathAlgo):
             if current_cell in visited:
                 continue
             visited.add(current_cell)
+            self.stats["nodes_expanded"] += 1
+            self.stats["cells_scanned"] += 1
 
             yield visited, None
 
@@ -36,6 +40,7 @@ class Dijkstra(PathAlgo):
             while path[-1] != start:
                 path.append(came_from[path[-1]])
             path.reverse()
+            self.record_path(path, distance[end])
             yield visited, path
         else:
             yield visited, None

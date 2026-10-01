@@ -212,9 +212,9 @@ def test_jps_counts_nodes_expanded_and_cells_scanned():
     grid = Grid(10, 1, 1)
     jps = JPS()
     visited, path = run_to_end(jps, (0, 0), (0, 9), grid)
-    assert jps.nodes_expanded == 2
-    assert jps.nodes_expanded == len(visited)
-    assert jps.cells_scanned == 9
+    assert jps.stats["nodes_expanded"] == 2
+    assert jps.stats["nodes_expanded"] == len(visited)
+    assert jps.stats["cells_scanned"] == 9
 
 
 # ---------- Edge cases, run for every algorithm ----------

@@ -14,19 +14,14 @@ class JPS(PathAlgo):
     over runs of cells is only safe when every cell in the run costs the same.
     No corner cutting: a diagonal step needs both cells beside it to be free.
 
-    After a search, two counters are available:
+    Two counters in self.stats are worth comparing:
     - nodes_expanded: cells popped from the priority queue and expanded.
     - cells_scanned: every cell the jump loop stepped through, including the straight
       scans made from each diagonal step. JPS expands few nodes but still scans many cells.
     """
 
-    def __init__(self):
-        self.nodes_expanded = 0
-        self.cells_scanned = 0
-
     def search(self, start, end, grid):
-        self.nodes_expanded = 0
-        self.cells_scanned = 0
+        self.reset_stats()
 
         distance = {start: 0}
         came_from = {}
@@ -38,7 +33,7 @@ class JPS(PathAlgo):
             if current_cell in visited:
                 continue
             visited.add(current_cell)
-            self.nodes_expanded += 1
+            self.stats["nodes_expanded"] += 1
 
             yield visited, None
 
@@ -73,7 +68,9 @@ class JPS(PathAlgo):
             while jump_path[-1] != start:
                 jump_path.append(came_from[jump_path[-1]])
             jump_path.reverse()
-            yield visited, fill_in_path(jump_path)
+            path = fill_in_path(jump_path)
+            self.record_path(path, distance[end])
+            yield visited, path
         else:
             yield visited, None
 
@@ -103,7 +100,7 @@ class JPS(PathAlgo):
                 return None
             row += dr
             col += dc
-            self.cells_scanned += 1
+            self.stats["cells_scanned"] += 1
 
             if (row, col) == goal:
                 return (row, col)

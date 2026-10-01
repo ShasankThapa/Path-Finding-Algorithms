@@ -14,6 +14,11 @@ explain every line matter more than clever code.
   and implements `search(start, end, grid)`.
 - `search()` is a generator: it yields `(visited_set, None)` after each expansion step and
   finally `(visited_set, path)` (or `(visited_set, None)` if no path exists).
+- Each algorithm fills `self.stats` (nodes_expanded, cells_scanned, path_cost,
+  path_length_cells, search_time_ms) as it runs. `run_to_completion()` in `algos/base.py`
+  drains a search with no UI and sets search_time_ms. The UI times one such run when Run is
+  pressed and animates a second copy; a side panel shows live stats and the last result per
+  algorithm on the current map (cleared when the map changes).
 - `game_window.py` – the Pygame loop. It calls `next()` on the generator once per frame to
   animate the search, and lets the user draw walls/mud and pick an algorithm.
 - Dijkstra (`algos/dijkstra.py`), A* (`algos/astar.py`) and Bidirectional (`algos/bidirectional.py`)

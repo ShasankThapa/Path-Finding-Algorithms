@@ -5,13 +5,16 @@ import numpy as np
 import pygame
 
 import renderer
+from algos.base import run_to_completion
 from algos.dijkstra import Dijkstra
 from algos.astar import Astar
 from algos.bidirectional import Bidirect
 from algos.jps import JPS
 from grid import Grid
 
-WINDOW_WIDTH = 850
+GRID_AREA_WIDTH = 850
+PANEL_WIDTH = 300
+WINDOW_WIDTH = GRID_AREA_WIDTH + PANEL_WIDTH
 TOOLBAR_HEIGHT = 60
 GRID_AREA_HEIGHT = 800
 STATUS_BAR_HEIGHT = 60
@@ -46,6 +49,13 @@ def make_algorithm(selected_algo, movement):
     return algo_class(movement)
 
 
+def run_label(selected_algo, movement):
+    # Name shown in the stats panel, e.g. "A* 8". JPS is always 8-directional.
+    if ALGORITHMS[selected_algo] is JPS:
+        return "JPS"
+    return f"{selected_algo} {movement}"
+
+
 def is_on_marker(layout, marker, position):
     # True if the mouse is within the marker's circle (markers can be bigger than a cell).
     centre_x, centre_y = layout.cell_centre(marker[0], marker[1])
@@ -62,7 +72,8 @@ def main(grid_width=50, grid_height=50):
     screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
     pygame.display.set_caption("Pathfinding Visualizer")
 
-    grid_area = pygame.Rect(0, TOOLBAR_HEIGHT, WINDOW_WIDTH, GRID_AREA_HEIGHT)
+    grid_area = pygame.Rect(0, TOOLBAR_HEIGHT, GRID_AREA_WIDTH, GRID_AREA_HEIGHT)
+    panel_x = GRID_AREA_WIDTH + 15
     status_top = TOOLBAR_HEIGHT + GRID_AREA_HEIGHT
 
     g = Grid(grid_width, grid_height, 1)
@@ -77,6 +88,14 @@ def main(grid_width=50, grid_height=50):
     current_path = None
     overlay = renderer.new_overlay(layout)
     drawn_visited = set()
+
+    # Stats panel state. animated_algo fills in its stats live as the animation runs.
+    # timed_stats come from a separate run with no animation, for an honest time.
+    # last_results keeps the latest finished result per algorithm for this map.
+    current_label = None
+    animated_algo = None
+    timed_stats = None
+    last_results = {}
 
     algo_list = list(ALGORITHMS.keys())
     selected_algo = "Dijkstra"
@@ -124,8 +143,18 @@ def main(grid_width=50, grid_height=50):
                     current_path = None
                     overlay = renderer.new_overlay(layout)
                     drawn_visited = set()
+                    current_label = None
+                    last_results = {}
                 elif run_button.collidepoint(mouse_x, mouse_y):
-                    search_generator = make_algorithm(selected_algo, movement).search(start, end, g)
+                    # First run the search once with no drawing, just to time it.
+                    timed_algo = make_algorithm(selected_algo, movement)
+                    run_to_completion(timed_algo, start, end, g)
+                    timed_stats = dict(timed_algo.stats)
+
+                    # Then start a fresh copy of the same search for the animation.
+                    current_label = run_label(selected_algo, movement)
+                    animated_algo = make_algorithm(selected_algo, movement)
+                    search_generator = animated_algo.search(start, end, g)
                     current_path = None
                     overlay = renderer.new_overlay(layout)
                     drawn_visited = set()
@@ -177,26 +206,32 @@ def main(grid_width=50, grid_height=50):
                         renderer.draw_background_cell(background, g, layout, cell[0], cell[1])
 
                 if changed:
-                    # The old search no longer matches the grid, so clear it.
+                    # The old search and results no longer match the map, so clear them.
                     search_generator = None
                     current_path = None
+                    current_label = None
+                    last_results = {}
                     if drawn_visited:
                         overlay = renderer.new_overlay(layout)
                         drawn_visited = set()
 
         # Advance the search by several steps per frame, then draw only the new cells.
         latest_visited = None
+        finished = False
         if search_generator is not None:
             for step in range(SPEEDS[speed_index]):
                 try:
                     latest_visited, maybe_path = next(search_generator)
                 except StopIteration:
-                    search_generator = None
+                    finished = True
                     break
                 if maybe_path is not None:
                     current_path = maybe_path
-                    search_generator = None
+                    finished = True
                     break
+        if finished:
+            search_generator = None
+            last_results[current_label] = timed_stats
         if latest_visited is not None:
             new_cells = latest_visited - drawn_visited
             renderer.draw_visited_cells(overlay, layout, new_cells)
@@ -218,6 +253,14 @@ def main(grid_width=50, grid_height=50):
             renderer.draw_button(screen, font, movement_button, "8-dir (JPS)", locked=True)
         else:
             renderer.draw_button(screen, font, movement_button, f"{movement}-dir")
+
+        searching = search_generator is not None
+        if current_label is None:
+            renderer.draw_current_stats(screen, font, small_font, panel_x, 15, None, None, None, False)
+        else:
+            renderer.draw_current_stats(screen, font, small_font, panel_x, 15, current_label,
+                                        animated_algo.stats, timed_stats, searching)
+        renderer.draw_results_table(screen, font, small_font, panel_x, 260, last_results)
 
         renderer.draw_legend(screen, small_font, 20, status_top + 8)
         speed_text = f"Speed: {SPEEDS[speed_index]} steps/frame (keys 1-5, +/-)"
