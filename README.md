@@ -81,7 +81,7 @@ PathFinder/
 │   ├── astar.py
 │   ├── bidirectional.py
 │   └── jps.py
-├── tests/                 # pytest suite with independent reference solvers
+├── tests/                 # two pytest tests: hand-checked grids + official Moving AI answers
 ├── final-algos/           # demo GIFs
 ├── grid.py                # Grid costs and get_neighbours()
 ├── game_window.py         # main window and event loop

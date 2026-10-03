@@ -38,8 +38,9 @@ explain every line matter more than clever code.
   the "Next map" button cycles the editable grid and every map there.
 - Timing: `step_search()` in `algos/base.py` times only the time inside each search step, so
   the UI animation and `run_to_completion()` measure the same way, with no separate timed run.
-- `pytest -m movingai` runs the slow benchmark check (A* 8-dir and JPS vs official optimal
-  lengths, 50 scenarios per map). It is excluded from the default `pytest` run.
+- Tests: two files in `tests/`. `test_small_grids.py` checks small grids with answers worked
+  out by hand (walls, mud, no path, start = end, no corner cutting); `test_moving_ai.py` checks
+  every 8-direction algorithm against all 290 official Moving AI answers for `den312d`. Run `pytest`.
 - `benchmark.py` – headless A* (8-dir) vs JPS benchmark (no Pygame). `python benchmark.py`
   (~2 min) or `--quick` (~12 s). Aborts if any cost is wrong. Writes results/benchmark.csv,
   results/summary.md and two charts.
