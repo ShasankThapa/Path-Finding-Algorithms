@@ -1,8 +1,13 @@
 import math
 
+# Heuristics estimate the cost from a cell to the end. A* and JPS use them to decide
+# which cell to explore next. A heuristic must never overestimate the real cost,
+# otherwise A* might return a path that isn't the cheapest.
+
 
 def manhattan(cell, end):
     # Fewest steps between two cells when only straight moves (cost 1) are allowed.
+    # Rows apart + columns apart.
     return abs(cell[0] - end[0]) + abs(cell[1] - end[1])
 
 

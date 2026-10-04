@@ -35,10 +35,10 @@ def compute_cell_size(grid, area_width, area_height):
 
 
 class GridLayout:
-    """Where a grid is drawn on screen: its cell size and top-left corner.
+    # Where a grid is drawn on screen: its cell size and top-left corner.
 
-    Each grid panel gets its own layout, so several panels could sit side by side.
-    """
+    # Each grid panel gets its own layout, so several panels could sit side by side.
+
 
     def __init__(self, grid, area_rect):
         self.cell_size = compute_cell_size(grid, area_rect.width, area_rect.height)

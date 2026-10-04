@@ -17,8 +17,10 @@ explain every line matter more than clever code.
 - Each algorithm fills `self.stats` (nodes_expanded, cells_scanned, path_cost,
   path_length_cells, search_time_ms) as it runs. A side panel shows live stats and the last
   result per algorithm on the current map (cleared when the map changes).
-- `game_window.py` – the Pygame loop. It calls `next()` on the generator once per frame to
-  animate the search, and lets the user draw walls/mud and pick an algorithm.
+- `game_window.py` – the app, as one `App` class: `load_map`/`clear_search` manage state, one method
+  per button (`start_run`, `toggle_race`, ...), `handle_key`/`handle_click`/`handle_drag` for input,
+  `advance_search` steps the search each frame, and `draw` calls `draw_grid`/`draw_toolbar`/
+  `draw_panel`/`draw_status_bar`. `run()` is the main loop: events, advance, draw.
 - Dijkstra (`algos/dijkstra.py`), A* (`algos/astar.py`) and Bidirectional (`algos/bidirectional.py`)
   take `movement=4` (default) or `movement=8` and respect mud costs.
   Move cost = step length * cost of the cell entered. A* uses Manhattan (4) or octile (8).
@@ -30,9 +32,10 @@ explain every line matter more than clever code.
 - `renderer.py` – all drawing. Background surface (walls/mud/floor) built once and patched per
   painted cell; visited cells drawn incrementally onto an overlay; path and markers on top.
   `GridLayout` maps cells to screen pixels so a grid can be drawn in any panel.
-- `race.py` – Race mode: `RACE_ALGORITHMS` at the top lists the racers. Each `Racer` has its own
-  layout/background/overlay; all advance the same number of steps (yields) per frame and are
-  ranked by steps taken. Race mode uses the current map; editing only happens in normal mode.
+- `race.py` – Race mode: 8-direction Dijkstra, A*, Bidirectional and JPS (`RACE_ALGORITHMS`) race on
+  the current map in a 2x2 view. Each `Racer` has its own layers and draws itself; every racer takes
+  `STEPS_PER_FRAME` (fixed, 5) steps per frame and they're ranked by steps taken. Editing only
+  happens in normal mode.
 - `maps_io.py` – loads Moving AI `.map` files ('.', 'G', 'S' passable; everything else is a wall)
   and `.map.scen` scenarios (x = column, y = row, so start = (y, x)). Maps live in `maps/`;
   the "Next map" button cycles the editable grid and every map there.
@@ -41,9 +44,6 @@ explain every line matter more than clever code.
 - Tests: two files in `tests/`. `test_small_grids.py` checks small grids with answers worked
   out by hand (walls, mud, no path, start = end, no corner cutting); `test_moving_ai.py` checks
   every 8-direction algorithm against all 290 official Moving AI answers for `den312d`. Run `pytest`.
-- `benchmark.py` – headless A* (8-dir) vs JPS benchmark (no Pygame). `python benchmark.py`
-  (~2 min) or `--quick` (~12 s). Aborts if any cost is wrong. Writes results/benchmark.csv,
-  results/summary.md and two charts.
 - Run the app: `.venv/bin/python game_window.py` (optional size: `game_window.py 200 200`).
   Keys 1-5 or +/- set search steps per frame. Drag the start/end markers to move them.
 
